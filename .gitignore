@@ -1,0 +1,25 @@
+# Quartus compilation garbage
+db/
+incremental_db/
+output_files/
+*.sof
+*.pof
+*.qws
+*.smsg
+
+# Verilator/Simulation artifacts
+obj_dir/
+logs/
+*.vcd
+*.vpd
+
+# Software build artifacts
+*.o
+*.elf
+*.hex
+*.bin
+build/
+
+# IDE settings
+.vscode/
+.idea/
