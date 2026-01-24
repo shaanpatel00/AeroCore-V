@@ -24,7 +24,7 @@ The project includes a **"Digital Twin"** simulation environment that couples th
 
 ---
 
-## 📂 Directory Structure
+## Directory Structure
 
 ```text
 aerocore-v/
@@ -63,10 +63,10 @@ Data Flow
 graph TD
     subgraph "FPGA / SoC (DE10-Standard)"
         subgraph "Core Complex"
-            RV32[RISC-V Core<br/>RV32I]
+            RV32["RISC-V Core<br/>RV32I"]
             ALU[Standard ALU]
-            PID_ALU[<b>Custom PID ALU</b><br/>Opcode: 0x0B<br/>Single-Cycle Calc]
-            MMU[MMU<br/>TLB + PTW]
+            PID_ALU["<b>Custom PID ALU</b><br/>Opcode: 0x0B<br/>Single-Cycle Calc"]
+            MMU["MMU<br/>TLB + PTW"]
             
             RV32 <--> ALU
             RV32 <--> PID_ALU
@@ -74,9 +74,9 @@ graph TD
         end
 
         subgraph "Memory Hierarchy"
-            L1_Cache[L1 Cache<br/>Split I/D, Direct-Mapped]
-            L2_Cache[L2 Cache<br/>Unified, 4-Way LRU]
-            BRAM[Block RAM / DDR3<br/>Main Memory<br/>0x0000_0000]
+            L1_Cache["L1 Cache<br/>Split I/D, Direct-Mapped"]
+            L2_Cache["L2 Cache<br/>Unified, 4-Way LRU"]
+            BRAM["Block RAM / DDR3<br/>Main Memory<br/>0x0000_0000"]
             
             MMU <--> L1_Cache
             L1_Cache <--> L2_Cache
@@ -86,10 +86,10 @@ graph TD
         subgraph "Peripheral Interconnect (MMIO 0x4000_XXXX)"
             Bus[System Interconnect]
             
-            SPI_Wrap[SPI Wrapper<br/>0x4000_0000]
-            I2C_Wrap[I2C Wrapper<br/>0x4000_0004]
-            UART_Wrap[UART<br/>0x4000_0200]
-            PWM_Ctrl[PWM Controller<br/>0x4000_0100]
+            SPI_Wrap["SPI Wrapper<br/>0x4000_0000"]
+            I2C_Wrap["I2C Wrapper<br/>0x4000_0004"]
+            UART_Wrap["UART<br/>0x4000_0200"]
+            PWM_Ctrl["PWM Controller<br/>0x4000_0100"]
 
             L2_Cache <--> Bus
             Bus <--> SPI_Wrap
@@ -100,10 +100,10 @@ graph TD
     end
 
     subgraph "External Hardware / Digital Twin"
-        IMU[IMU Sensor<br/>(Gyro/Accel)]
+        IMU["IMU Sensor<br/>(Gyro/Accel)"]
         GPS[GPS Module]
-        Telemetry[Telemetry Station<br/>(PC)]
-        Motors[BLDC Motors<br/>(ESCs)]
+        Telemetry["Telemetry Station<br/>(PC)"]
+        Motors["BLDC Motors<br/>(ESCs)"]
 
         SPI_Wrap <==>|SPI| IMU
         I2C_Wrap <==>|I2C| GPS
