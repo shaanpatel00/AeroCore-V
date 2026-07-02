@@ -1,8 +1,9 @@
 # AeroCore-V: RISC-V Flight Control SoC
+[![Verilator CI](https://github.com/shaanpatel00/aerocore-v/actions/workflows/verilator.yml/badge.svg)](https://github.com/shaanpatel00/aerocore-v/actions)
 
 **AeroCore-V** is a specialized SystemVerilog System-on-Chip (SoC) designed for low-latency UAV flight control. It is targeted for the **Terasic DE10-Standard** (Cyclone V FPGA) and features a custom RISC-V core with hardware-accelerated PID control, a two-level cache hierarchy, and an MMU-protected kernel.
 
-The project includes a **"Digital Twin"** simulation environment that couples the Verilated RTL with a C++ physics engine and OpenGL visualization to validate flight stability before synthesis.
+To ensure enterprise-grade reliability, the architecture is validated through a rigorous **Hardware-Software Co-Design Verification** pipeline, utilizing a Verilator C++ testbench, a custom TCP/UDP physics engine (Digital Twin), and automated CI workflows.
 
 ## Key Features
 
@@ -14,51 +15,55 @@ The project includes a **"Digital Twin"** simulation environment that couples th
 * **Memory Management**: Sv32-compliant **MMU** (TLB + Hardware Page Table Walker) for kernel/user isolation.
 * **Peripherals**: Memory-mapped SPI (IMU), I2C (GPS), UART (Telemetry), and PWM Motor Controllers.
 
-### Software
+### Software & Toolchain
 * **Bare-Metal Kernel**: A cooperative scheduler managing flight control (100Hz) and telemetry tasks.
 * **Telemetry**: Real-time status reporting via UART using Q16.16 fixed-point formatting.
+* **Scripting**: Python-based toolchains (`elf2hex.py`) and TCL build scripts to streamline the compilation-to-synthesis pipeline[cite: 2, 3].
 
-### Simulation
-* **Digital Twin**: A Verilator-based simulation where the RTL drives a C++ physics engine.
-* **3D Visualization**: OpenGL visualization of the drone's response to hardware signals in real-time.
+### Verification & Validation (CI/CD)
+* **Automated CI**: GitHub Actions automatically runs the Verilator simulation suite on every commit to ensure RTL integrity.
+* **Peripheral Unit Testing**: C-based target tests (`uart_loopback_test.c`, `i2c_sensor_read.c`) validate hardware peripheral wrappers prior to kernel integration[cite: 2].
+* **Digital Twin**: A Verilator-based simulation where the RTL drives a C++ physics engine, providing 3D OpenGL visualization of the drone's physical response to hardware signals in real-time.
 
 ---
 
-## Directory Structure
+## Memory-Mapped I/O (MMIO) Map
+The SoC utilizes a standard memory-mapped interconnect architecture. Address space bit 30 determines RAM vs. IO routing.
 
-```text
-aerocore-v/
-├── fpga/                   # Quartus Prime Project Files
-│   ├── de10_standard/      # Board-specific pin mappings (QSF) & constraints (SDC)
-│   └── scripts/            # Tcl/Shell scripts for headless build & programming
-├── rtl/                    # SystemVerilog Source Code
-│   ├── cache/              # L1/L2 Controller & Cache Memory
-│   ├── core/               # RISC-V Core (ALU, Decode, RegFile, Pipeline)
-│   ├── mmu/                # TLB & Page Table Walker
-│   └── peripherals/        # SPI, I2C, UART, & SoC Top-Level
-├── sim/                    # Simulation Environment
-│   ├── digital_twin/       # C++ Physics Engine & Visualizer
-│   ├── tests/              # Assembly Unit Tests (ALU, MMU)
-│   └── verilator/          # Verilator Testbench & Makefile
-└── sw/                     # Embedded Software Stack
-    ├── bootloader/         # Startup Assembly & Linker Script
-    ├── kernel/             # PID Loop, Scheduler, Trap Handlers
-    ├── tools/              # elf2hex converter
-    └── user/               # Telemetry & User Tasks
+| Base Address | Subsystem | Description |
+| :--- | :--- | :--- |
+| `0x00000000` | Main BRAM | Main memory for Instruction/Data; Boot ROM entry |
+| `0x40000000` | SPI Wrapper | Interface for IMU (Gyro/Accel) telemetry acquisition |
+| `0x40000004` | I2C Wrapper | Interface for GPS positioning data |
+| `0x40000100` | PWM Controller| Motor thrust actuation registers |
+| `0x40000200` | UART Controller| Telemetry station TX/RX console |
+| `0x50000000` | PID Coprocessor| Memory-mapped registers for custom ALU extensions |
+
+---
+
+## Quick Start: Simulation & Build
+
+**1. Run Verilator Tests (Linux/WSL):**
+Ensure Verilator and standard build tools (`make`, `gcc`) are installed. This will run the C++ testbench and validate the core logic.
+```bash
+cd sim/verilator
+make
 ```
 
-## Architecture
-Data Flow
-* Sensors: IMU data enters via SPI Wrapper (GPIO inputs).
+**2. Launch the Digital Twin Physics Simulation:**
+```bash
+cd sim/digital_twin
+make run
+```
 
-* Core: The RISC-V CPU reads sensors from 0x4000_0000.
+**3. Synthesize for Intel DE10-Standard (FPGA):**
+Ensure Intel Quartus Prime is in your environment path to run the automated TCL build script.
+```bash
+cd fpga/scripts
+quartus_sh -t build.tcl
+```
 
-* Calculate: The Custom ALU executes PID_STEP (Opcode 0x0B) in 1 cycle.
-
-* Actuate: CPU writes result to Motor PWM Register 0x4000_0100.
-
-* Physics: In simulation, physics_engine.cpp reads this register to update velocity.
-
+## Architecture Diagram
 ```mermaid
 graph TD
     subgraph "FPGA / SoC (DE10-Standard)"
@@ -116,10 +121,8 @@ graph TD
     style L2_Cache fill:#69f,stroke:#333,stroke-width:2px
 ```
 
-# System Architecture & Logic
-
-## 1. Hardware Architecture (RTL)
-The hardware is a custom System-on-Chip (SoC) centered around a modified RISC-V core.
+## Hardware Architecture & Logic (RTL)
+The hardware is a custom System-on-Chip (SoC) centered around a modified RISC-V core.  
 
 ### Top-Level Integration (`soc_top.sv`)
 This module ties everything together. It instantiates the RISC-V core, memory, and peripherals. It maps memory addresses to specific hardware:
@@ -137,22 +140,16 @@ Instead of calculating flight stability in software (slow), the core has a dedic
 * **MMU (`tlb.sv`)**: A Translation Lookaside Buffer translates virtual addresses to physical ones. It enforces permissions, ensuring User mode code (telemetry) cannot write to Supervisor pages (kernel).
 * **L2 Cache (`l2_controller.sv`)**: Implements a 4-Way Set Associative cache with a True LRU (Least Recently Used) policy. It maintains an "LRU Matrix" (`lru_matrix`) to track access history and intelligently evict old data to keep the sensor stream smooth.
 
-## 2. Software Stack (Kernel)
+## Software Stack (Kernel)
 The software is a bare-metal kernel that relies on the hardware features described above.
 
 ### Flight Loop (`pid.c`)
-This is the critical task. It reads sensor data from the SPI memory-mapped address `0x40000000` (defined as `SPI_DATA_REG`).
-* It calculates the error and then calls `custom_pid_op()`.
-* This C function uses inline assembly (`.insn r 0x0B...`) to invoke the hardware PID unit directly.
-* The result is immediately written to the motor register `MOTOR_PWM_REG`.
+Reads sensor data from `0x40000000` (`SPI_DATA_REG`), calculates error, and invokes the hardware PID unit via inline assembly (`.insn r 0x0B...`). The result is written to `MOTOR_PWM_REG`.
 
 ### Scheduler (`sched.c`)
 A simple cooperative scheduler runs in `main()`. It prioritizes the `pid_task()` (flight control) to ensure the drone stays stable, and runs `telemetry_task()` less frequently (every 100 ticks) to report status.
 
-### Telemetry (`telemetry_task.c`)
-Reads the system state and formats it into human-readable text using Q16.16 fixed-point conversion. It transmits this data via UART for debugging.
-
-## 3. Digital Twin Simulation
+## Digital Twin Simulation
 The project validates the hardware/software logic by coupling it with a C++ physics engine.
 
 ### Bridge (`bridge.cpp`)
