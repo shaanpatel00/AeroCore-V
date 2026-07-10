@@ -1,5 +1,5 @@
-CC=riscv64-unknown-elf-gcc
-OBJCOPY=riscv64-unknown-elf-objcopy
+CC = riscv64-elf-gcc
+OBJCOPY = riscv64-elf-objcopy
 CFLAGS=-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib
 
 all: kernel.hex
