@@ -1,50 +1,78 @@
 #include <iostream>
-#include <fstream>
-#include <vector>
-#include <iomanip>
-#include "Vsoc_top.h"
-#include "verilated.h"
-#include "verilated_vcd_c.h"
+#include <verilated.h>
+#include "Vsoc_top.h" // Your Verilated top-level module
 
-// --- Configuration ---
-#define RAM_SIZE 4096
-#define MAX_CYCLES 10000
+// Define the MMIO address for the UART Transmit Register based on your architecture
+#define UART_TX_ADDR 0x40000200
 
-// Pointer to the synthesized top module
-Vsoc_top* top;
-VerilatedVcdC* trace = nullptr;
-vluint64_t main_time = 0;
+int main(int argc, char** argv) {
+    Verilated::commandArgs(argc, argv);
+    
+    // Instantiate the Verilated hardware
+    Vsoc_top* top = new Vsoc_top;
 
-/**
- * @brief Loads a hex file into the SoC's internal RAM.
- * Accesses the Verilated scope directly (Backdoor Load).
- */
-void load_hex(const char* filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open hex file " << filename << std::endl;
+    // Initialize inputs
+    top->clk = 0;
+    top->reset = 1;
+
+    // Assert reset for 5 cycles
+    for (int i = 0; i < 10; ++i) {
+        top->clk = !top->clk;
+        top->eval();
+    }
+    top->reset = 0;
+
+    std::cout << "[VERILATOR] Starting AeroCore-V SoC Simulation..." << std::endl;
+
+    int max_cycles = 50000;
+    int cycle_count = 0;
+    bool test_finished = false;
+
+    // Main Simulation Loop
+    while (!Verilated::gotFinish() && cycle_count < max_cycles && !test_finished) {
+        // Toggle Clock
+        top->clk = 1;
+        top->eval();
+        top->clk = 0;
+        top->eval();
+
+        // -------------------------------------------------------------
+        // Verification Logic: Monitor the System Bus / UART
+        // -------------------------------------------------------------
+        // We are checking if the RISC-V core is writing to the UART_TX_REG
+        // (You may need to adjust these signal names based on your exact soc_top.sv ports)
+        
+        if (top->io_write_en && (top->io_addr == UART_TX_ADDR)) {
+            uint32_t uart_data = top->io_write_data;
+            
+            // Print characters to terminal just like a real UART console
+            if (uart_data >= 0x20 && uart_data <= 0x7E) {
+                std::cout << (char)uart_data;
+            }
+
+            // Check for our custom PASS/FAIL execution codes
+            if (uart_data == 0xFF) {
+                std::cout << "\n[VERIFICATION] RESULT: PASS (0xFF detected)" << std::endl;
+                test_finished = true;
+            } else if (uart_data == 0xEE) {
+                std::cout << "\n[VERIFICATION] RESULT: FAIL (0xEE detected)" << std::endl;
+                test_finished = true;
+                // Exit with an error code so the GitHub Action turns red
+                delete top;
+                exit(1); 
+            }
+        }
+
+        cycle_count++;
+    }
+
+    if (!test_finished) {
+        std::cout << "\n[VERIFICATION] RESULT: TIMEOUT (Max cycles reached)" << std::endl;
+        delete top;
         exit(1);
     }
 
-    std::string line;
-    int addr = 0;
-    // Accessing the RAM array inside soc_top.
-    // Note: The path "soc_top__DOT__ram" depends on the hierarchy in soc_top.sv
-    // If you named the instance 'u_ram' or similar, adjust here.
-    // Based on previous files, it was: logic [31:0] ram [0:4095]; inside soc_top.
-    
-    // Verilator flattens arrays, usually accessible via public method or direct access if --public used.
-    // Here we use a simplified approach assuming we can write to the memory array via DPI or direct access 
-    // if Verilated with --x-initial 0. 
-    // For this generated code, we will assume the test starts with a pre-loaded $readmemh in RTL 
-    // OR we rely on a Verilator feature called 'DPI' to write memory.
-    
-    // HOWEVER, for simplicity in this C++ harness, we will parse the file and 
-    // print a warning that "Runtime loading requires DPI or $readmemh in RTL".
-    // To make this functional without complex DPI:
-    std::cout << "[Loader] Loading " << filename << "..." << std::endl;
-    // In a real flow, you'd use: top->soc_top__DOT__ram[addr] = std::stoul(line, nullptr, 16);
+    // Clean up
+    delete top;
+    return 0;
 }
-
-/**
- * @brief Ticks the system

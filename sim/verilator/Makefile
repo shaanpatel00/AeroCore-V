@@ -16,7 +16,7 @@ RTL_SRCS := $(RTL_DIR)/core/riscv_pkg.sv \
             $(RTL_DIR)/cache/l2_controller.sv \
             $(RTL_DIR)/mmu/tlb.sv \
             $(RTL_DIR)/mmu/ptw.sv \
-            $(RTL_DIR)/peripherals/spi_wrapper.sv \
+            $(RTL_DIR)/peripherals/spi_wrappers.sv \
             $(RTL_DIR)/peripherals/uart.sv \
             $(RTL_DIR)/soc_top.sv
 
