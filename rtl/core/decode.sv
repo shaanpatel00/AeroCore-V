@@ -128,6 +128,10 @@ module decode (
                 alu_op    = ALU_PID;
                 // rs1=Error, rs2=PrevError, rd=ControlOutput
             end
+            
+            default: begin
+                // Do nothing, defaults are already set above the case statement
+            end
         endcase
     end
 

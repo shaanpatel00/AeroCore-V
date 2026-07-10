@@ -2,6 +2,7 @@
 MODULE := Vsoc_top
 RTL_DIR := ../../rtl
 TWIN_DIR := ../digital_twin
+VERILATOR_ROOT := /opt/homebrew/share/verilator
 
 # Source Files
 RTL_SRCS := $(RTL_DIR)/core/riscv_pkg.sv \
@@ -23,7 +24,7 @@ RTL_SRCS := $(RTL_DIR)/core/riscv_pkg.sv \
 # Tools
 VERILATOR := verilator
 CXX := g++
-CFLAGS := -std=c++11 -Wall -O2
+CFLAGS := -std=c++17 -Wall -O2
 
 # OpenGL Libs (For Digital Twin)
 GL_LIBS := -lGL -lGLU -lglut
@@ -38,30 +39,27 @@ all: test twin
 test: obj_dir/$(MODULE)__ALL.a
 	@echo "--- Building Headless Sim ---"
 	$(CXX) $(CFLAGS) -Iobj_dir -I$(VERILATOR_ROOT)/include \
-		$(VERILATOR_ROOT)/include/verilated.cpp \
-		$(VERILATOR_ROOT)/include/verilated_vcd_c.cpp \
-		main_tb.cpp obj_dir/*.o \
-		-o run_test
-	@echo "Build Complete: ./run_test <hex_file>"
+	main_tb.cpp obj_dir/*.o \
+	-o run_test
+	@echo "Build Complete: ./run_test"
 
 # 2. Digital Twin (Compiles bridge.cpp + physics + viz)
 twin: obj_dir/$(MODULE)__ALL.a
 	@echo "--- Building Digital Twin ---"
 	$(CXX) $(CFLAGS) -Iobj_dir -I$(VERILATOR_ROOT)/include \
-		-I$(TWIN_DIR) \
-		$(VERILATOR_ROOT)/include/verilated.cpp \
-		$(TWIN_DIR)/physics_engine.cpp \
-		$(TWIN_DIR)/visualizer.cpp \
-		$(TWIN_DIR)/bridge.cpp \
-		obj_dir/*.o \
-		$(GL_LIBS) \
-		-o digital_twin
+	-I$(TWIN_DIR) \
+	$(TWIN_DIR)/physics_engine.cpp \
+	$(TWIN_DIR)/visualizer.cpp \
+	$(TWIN_DIR)/bridge.cpp \
+	obj_dir/*.o \
+	$(GL_LIBS) \
+	-o digital_twin
 	@echo "Build Complete: ./digital_twin"
 
 # 3. Verilate the RTL (Common Step)
 obj_dir/$(MODULE)__ALL.a: $(RTL_SRCS)
 	@echo "--- Verilating RTL ---"
-	$(VERILATOR) --cc --exe --trace \
+	$(VERILATOR) --cc --trace \
 		-I$(RTL_DIR)/core -I$(RTL_DIR)/cache \
 		-I$(RTL_DIR)/mmu -I$(RTL_DIR)/peripherals \
 		--top-module soc_top \
