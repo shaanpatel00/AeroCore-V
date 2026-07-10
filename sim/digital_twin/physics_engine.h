@@ -15,7 +15,7 @@ private:
     const double gravity;       // m/s^2
     const double drag_coeff;    // Drag factor
     const double dt;            // Simulation timestep (s)
-
+    
 public:
     PhysicsEngine();
 
@@ -34,6 +34,6 @@ public:
      * @brief Returns altitude in Q16.16 fixed-point format for the SoC
      */
     int32_t get_sensor_data_fixed();
-};
+}; // <-- Added missing closing brace and semicolon
 
 #endif // PHYSICS_ENGINE_H

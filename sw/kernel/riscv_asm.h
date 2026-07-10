@@ -1,6 +1,5 @@
 #ifndef RISCV_ASM_H
 #define RISCV_ASM_H
-
 #include <stdint.h>
 
 // --- CSR Definitions ---
@@ -16,13 +15,10 @@
 // --- Memory Mapped IO (Match soc_top.sv) ---
 #define MMIO_BASE       0x40000000
 #define SPI_DATA_REG    (*((volatile uint32_t*)(MMIO_BASE + 0x00)))
-#define SPI_STATUS_REG  (*((volatile uint32_t*)(MMIO_BASE + 0x04))) // If implemented
+#define SPI_STATUS_REG  (*((volatile uint32_t*)(MMIO_BASE + 0x04))) 
 #define MOTOR_PWM_REG   (*((volatile uint32_t*)(MMIO_BASE + 0x100)))
 
 // --- Custom PID Instruction ---
-// Opcode: 0x0B (custom-0)
-// Format: .insn r opcode, func3, func7, rd, rs1, rs2
-// C Wrapper: output = pid_op(error, prev_error)
 static inline int32_t custom_pid_op(int32_t error, int32_t prev_error) {
     int32_t result;
     asm volatile(
@@ -31,7 +27,9 @@ static inline int32_t custom_pid_op(int32_t error, int32_t prev_error) {
         : "r"(error), "r"(prev_error)
     );
     return result;
-}
+} // <-- Added
 
 // --- CSR Access Macros ---
 #define csrw(csr, val)  asm volatile ("csrw %0, %1" :: "i"(csr), "r"(val))
+
+#endif

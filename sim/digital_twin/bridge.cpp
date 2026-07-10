@@ -39,7 +39,7 @@ void run_hardware_step() {
         top->eval();
         main_time++;
     }
-}
+} // <-- Added missing closing brace
 
 /**
  * @brief Reads the Motor PWM register from the FPGA memory map (Backdoor Access).
@@ -53,37 +53,33 @@ double read_motor_thrust() {
     // For safety/simplicity in this generated code, we read the Top-Level GPIO Output
     // top->motor_pwm is a 4-bit signal exposed in soc_top.sv
     
-    uint8_t pwm_val = top->motor_pwm; 
+    uint8_t pwm_val = top->motor_pwm;     
     
     // Convert PWM (0-15) to Force (Newtons)
     // Assume Max Thrust = 20N (enough to lift 1kg against 9.81m/s^2)
     double force = (double)pwm_val * (20.0 / 15.0);
     return force;
-}
+} // <-- Added missing closing brace
 
 // --- GLUT Callbacks ---
 
 void display_callback() {
     // 1. Step Hardware
     run_hardware_step();
-
     // 2. Read Output from Hardware
     double thrust = read_motor_thrust();
-
     // 3. Update Physics
     physics->update(thrust);
-
     // 4. Render Visuals
     Visualizer::render_scene(physics->get_altitude());
-
     // 5. Request next frame immediately
     glutPostRedisplay();
-}
+} // <-- Added missing closing brace
 
 void timer_callback(int value) {
     // Optional: Use to cap framerate if simulation runs too fast
     glutTimerFunc(16, timer_callback, 0); // ~60 FPS
-}
+} // <-- Added missing closing brace
 
 // --- Main ---
 
@@ -96,23 +92,23 @@ int main(int argc, char** argv) {
     top->rst_n = 0; top->clk = 0; top->eval();
     top->rst_n = 0; top->clk = 1; top->eval();
     top->rst_n = 1; top->clk = 0; top->eval();
-
+    
     // 2. Initialize Physics
     physics = new PhysicsEngine();
-
+    
     // 3. Initialize Visualizer & GLUT
     Visualizer::init(argc, argv);
-
+    
     // 4. Register Callbacks
     glutDisplayFunc(display_callback);
     // glutTimerFunc(16, timer_callback, 0);
-
+    
     // 5. Start Simulation Loop
     // This blocks until window is closed
     glutMainLoop();
-
+    
     // Cleanup
     delete physics;
     delete top;
     return 0;
-}
+} // <-- Added missing closing brace
