@@ -20,7 +20,7 @@ module decode (
     output logic        mem_re,
     output logic        wb_en_out,
     output RISCV_PKG::wb_mux_sel_e wb_mux,
-    output logic        pid_en,      // NEW: Enable PID ALU
+    output logic        pid_en,
     
     // Register File Outputs
     output logic [31:0] rs1_data,
@@ -31,7 +31,6 @@ module decode (
 );
     import RISCV_PKG::*;
 
-    // Instruction Decoding
     logic [6:0] opcode;
     logic [2:0] funct3;
     logic [6:0] funct7;
@@ -92,7 +91,7 @@ module decode (
                 wb_en_out = 1;
                 op_b_sel  = OPB_IMM;
                 case (funct3)
-                    3'b000: alu_op = ALU_ADD; // ADDI
+                    3'b000: alu_op = ALU_ADD;
                     3'b010: alu_op = ALU_SLT;
                     3'b011: alu_op = ALU_SLTU;
                     3'b100: alu_op = ALU_XOR;
@@ -117,25 +116,43 @@ module decode (
             
             OPCODE_LUI: begin
                 wb_en_out = 1;
-                op_a_sel  = OPA_ZERO; // 0 + imm
+                op_a_sel  = OPA_ZERO;
                 op_b_sel  = OPB_IMM;
             end
 
-            // --- CUSTOM PID INSTRUCTION ---
+            OPCODE_AUIPC: begin
+                wb_en_out = 1;
+                op_a_sel  = OPA_PC;
+                op_b_sel  = OPB_IMM;
+                alu_op    = ALU_ADD;
+            end
+
+            OPCODE_JAL: begin
+                wb_en_out = 1;
+                wb_mux    = WB_PC4;
+            end
+
+            OPCODE_JALR: begin
+                wb_en_out = 1;
+                wb_mux    = WB_PC4;
+            end
+
+            OPCODE_BRANCH: begin
+                op_a_sel = OPA_REG;
+                op_b_sel = OPB_REG;
+            end
+
             OPCODE_CUSTOM0: begin
                 wb_en_out = 1;
                 pid_en    = 1;
                 alu_op    = ALU_PID;
-                // rs1=Error, rs2=PrevError, rd=ControlOutput
             end
             
             default: begin
-                // Do nothing, defaults are already set above the case statement
             end
         endcase
     end
 
-    // Register File Instantiation
     regfile u_regfile (
         .clk(clk),
         .rst_n(rst_n),
@@ -147,5 +164,4 @@ module decode (
         .wdata(wb_data),
         .wen(wb_en)
     );
-
 endmodule
