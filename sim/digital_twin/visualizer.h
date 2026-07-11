@@ -1,9 +1,12 @@
 #ifndef VISUALIZER_H
 #define VISUALIZER_H
 
-// OpenGL Headers
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#include <OpenGL/gl.h>
+#else
 #include <GL/freeglut.h>
-#include <GL/gl.h>
+#endif
 
 class Visualizer {
 public:

@@ -27,7 +27,7 @@ CXX := g++
 CFLAGS := -std=c++17 -Wall -O2
 
 # OpenGL Libs (For Digital Twin)
-GL_LIBS := -lGL -lGLU -lglut
+GL_LIBS := -framework OpenGL -framework GLUT
 
 # --- Targets ---
 

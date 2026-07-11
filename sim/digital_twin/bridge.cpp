@@ -11,6 +11,12 @@ PhysicsEngine* physics = nullptr;
 vluint64_t main_time = 0;
 const int CYCLES_PER_UPDATE = 10000; // Run 10k FPGA clocks per physics step
 
+
+// Verilator requires this function to track simulation time
+double sc_time_stamp() {
+    return 0;
+}
+
 // --- Hardware Helper Functions ---
 
 /**
