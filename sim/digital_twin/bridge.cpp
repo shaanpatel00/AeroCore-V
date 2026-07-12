@@ -26,6 +26,7 @@ double sc_time_stamp() {
 void run_hardware_step() {
     // 1. Get Sensor Data from Physics World
     int32_t sensor_val = physics->get_sensor_data_fixed();
+    top->ext_sensor_data = sensor_val;
     
     // Simulate Serializing Data (Simplified: Put data on GPIO pins if using parallel test)
     // Or bit-bang SPI MISO if using the full SPI wrapper.

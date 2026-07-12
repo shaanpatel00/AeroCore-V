@@ -2,6 +2,9 @@ module soc_top (
     input  logic        clk,
     input  logic        rst_n,
     
+    // --- NEW: Digital Twin Sensor Backdoor ---
+    input  logic [31:0] ext_sensor_data,
+    
     // SPI Interface (to external IMU/ESP32)
     input  logic        spi_miso,
     output logic        spi_mosi,
@@ -41,15 +44,17 @@ module soc_top (
         end
     end
 
-    // --- 2. IO MOCKING (Fixes the C Code Timeout) ---
+    // --- 2. IO MOCKING ---
     logic [7:0] uart_mock_rx_buffer;
     
     always_comb begin
         io_rdata = 32'b0;
-        if (dcache_addr == 32'h40000204) begin
+        if (dcache_addr == 32'h40000000) begin
+            io_rdata = ext_sensor_data;              // Read altitude from C++ Physics Engine
+        end else if (dcache_addr == 32'h40000204) begin
             io_rdata = {24'b0, uart_mock_rx_buffer}; // Read RX Register
         end else if (dcache_addr == 32'h40000208) begin
-            io_rdata = 32'h00000003; // Status Register: TX_READY (bit 0) & RX_VALID (bit 1)
+            io_rdata = 32'h00000003;                 // Status Register: TX_READY & RX_VALID
         end
     end
 
