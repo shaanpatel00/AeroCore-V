@@ -25,9 +25,9 @@ module soc_top (
     logic [31:0] dcache_ram_data;
     logic [31:0] io_rdata;
 
-    // Load the test
+    // Load the Flight Control Kernel
     initial begin
-        $readmemh("../../sim/tests/uart_loopback_test.hex", ram);
+        $readmemh("../../sw/kernel.hex", ram); // Update this path to your actual compiled kernel!
     end
 
     // --- 1. TRUE DUAL-PORT COMBINATIONAL RAM ---
