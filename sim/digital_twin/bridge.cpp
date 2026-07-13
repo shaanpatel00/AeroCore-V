@@ -77,16 +77,22 @@ void display_callback() {
     double thrust = read_motor_thrust();
     // 3. Update Physics
     physics->update(thrust);
+    
+    // --- NEW: Print telemetry to the terminal so we can debug! ---
+    printf("Thrust: %6.2f N  |  Altitude: %6.2f m\n", thrust, physics->get_altitude());
+    
     // 4. Render Visuals
     Visualizer::render_scene(physics->get_altitude());
-    // 5. Request next frame immediately
-    glutPostRedisplay();
-} // <-- Added missing closing brace
+    
+    // REMOVED: glutPostRedisplay();
+}
 
 void timer_callback(int value) {
-    // Optional: Use to cap framerate if simulation runs too fast
-    glutTimerFunc(16, timer_callback, 0); // ~60 FPS
-} // <-- Added missing closing brace
+    // Trigger a new frame
+    glutPostRedisplay();
+    // Schedule the next frame in 16ms (~60 FPS)
+    glutTimerFunc(16, timer_callback, 0); 
+}
 
 // --- Main ---
 
@@ -96,9 +102,12 @@ int main(int argc, char** argv) {
     top = new Vsoc_top;
     
     // Reset Sequence
-    top->rst_n = 0; top->clk = 0; top->eval();
-    top->rst_n = 0; top->clk = 1; top->eval();
-    top->rst_n = 1; top->clk = 0; top->eval();
+    top->rst_n = 0;
+    for (int i = 0; i < 10; i++) {
+        top->clk = 0; top->eval();
+        top->clk = 1; top->eval();
+    }
+    top->rst_n = 1;
     
     // 2. Initialize Physics
     physics = new PhysicsEngine();
@@ -108,7 +117,7 @@ int main(int argc, char** argv) {
     
     // 4. Register Callbacks
     glutDisplayFunc(display_callback);
-    // glutTimerFunc(16, timer_callback, 0);
+    glutTimerFunc(16, timer_callback, 0);
     
     // 5. Start Simulation Loop
     // This blocks until window is closed
