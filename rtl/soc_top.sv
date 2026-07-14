@@ -93,7 +93,7 @@ module soc_top (
         .dcache_valid(core_dcache_valid)
     );
 
-    l1_controller u_l1 (
+    /*l1_controller u_l1 (
         .clk(clk),
         .rst_n(rst_n),
         .cpu_addr(dcache_addr),
@@ -109,10 +109,44 @@ module soc_top (
         .l2_rdata(l1_mem_rdata),
         .l2_valid(l1_mem_valid)
     );
+    */
+
+    assign core_dcache_rdata = l1_mem_rdata;
+    assign core_dcache_valid = l1_mem_valid;
+    assign l1_mem_addr  = dcache_addr;
+    assign l1_mem_wdata = dcache_wdata;
+    assign l1_mem_req   = dcache_req;
+    assign l1_mem_we    = dcache_we;
 
     // Memory/IO now serves the L1 controller instead of the core directly
+    // Simulate realistic DRAM-style backing memory latency (8 cycles per access)
+    localparam MEM_LATENCY = 8;
+    logic [3:0] mem_delay_cnt;
+    logic       mem_pending;
+
     assign l1_mem_rdata = l1_mem_addr[31:16] == 16'h4000 ? io_rdata : dcache_ram_data;
-    assign l1_mem_valid = 1'b1; // Combinational BRAM/IO always responds same-cycle
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            mem_delay_cnt <= 0;
+            mem_pending   <= 0;
+            l1_mem_valid  <= 0;
+        end else if (l1_mem_req && !mem_pending) begin
+            mem_pending  <= 1;
+            mem_delay_cnt <= MEM_LATENCY - 1;
+            l1_mem_valid <= 0;
+        end else if (mem_pending) begin
+            if (mem_delay_cnt == 0) begin
+                l1_mem_valid <= 1;
+                mem_pending  <= 0;
+            end else begin
+                mem_delay_cnt <= mem_delay_cnt - 1;
+                l1_mem_valid <= 0;
+            end
+        end else begin
+            l1_mem_valid <= 0;
+        end
+    end
 
     // --- 4. VERIFICATION MONITOR ---
     always_ff @(posedge clk) begin

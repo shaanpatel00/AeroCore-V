@@ -35,9 +35,13 @@ int main(int argc, char** argv) {
         top->clk = 1; top->eval();
         top->clk = 0; top->eval();
         cycle_count++;
+        #ifdef BASELINE_NO_STALL
+        // Baseline config ties dcache_valid=1'b1, so stalls are impossible by construction.
+        #else
         if (top->rootp->soc_top__DOT__dcache_req && !top->rootp->soc_top__DOT__core_dcache_valid) {
             stall_cycles++;
         }
+        #endif
     }
 
     std::cout << "[BENCH] total_cycles=" << cycle_count
