@@ -35,6 +35,14 @@ int main(int argc, char** argv) {
         top->clk = 1; top->eval();
         top->clk = 0; top->eval();
         cycle_count++;
+        if (cycle_count < 50) {
+            std::cout << "cyc=" << cycle_count
+                       << " pc=0x" << std::hex << top->rootp->soc_top__DOT__u_core__DOT__if_pc
+                       << " dreq=" << std::dec << (int)top->rootp->soc_top__DOT__dcache_req
+                       << " dvalid=" << (int)top->rootp->soc_top__DOT__core_dcache_valid
+                       << " l1state=" << (int)top->rootp->soc_top__DOT__u_l1__DOT__state
+                       << std::endl;
+        }
     }
 
     // If the loop finished but $finish wasn't called, it means we timed out

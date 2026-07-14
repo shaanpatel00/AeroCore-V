@@ -36,11 +36,11 @@ module soc_top (
     // --- 1. TRUE DUAL-PORT COMBINATIONAL RAM ---
     // Instruction Cache gets Port A, Data Cache gets Port B
     assign icache_ram_data = ram[icache_addr[13:2]];
-    assign dcache_ram_data = ram[dcache_addr[13:2]];
+    assign dcache_ram_data = ram[l1_mem_addr[13:2]];
 
     always_ff @(posedge clk) begin
-        if (dcache_we && !dcache_addr[30]) begin
-            ram[dcache_addr[13:2]] <= dcache_wdata;
+        if (l1_mem_we && l1_mem_req && !l1_mem_addr[30]) begin
+            ram[l1_mem_addr[13:2]] <= l1_mem_wdata;
         end
     end
 
@@ -49,11 +49,11 @@ module soc_top (
     
     always_comb begin
         io_rdata = 32'b0;
-        if (dcache_addr == 32'h40000000) begin
+        if (l1_mem_addr == 32'h40000000) begin
             io_rdata = ext_sensor_data;              // Read altitude from C++ Physics Engine
-        end else if (dcache_addr == 32'h40000204) begin
+        end else if (l1_mem_addr == 32'h40000204) begin
             io_rdata = {24'b0, uart_mock_rx_buffer}; // Read RX Register
-        end else if (dcache_addr == 32'h40000208) begin
+        end else if (l1_mem_addr == 32'h40000208) begin
             io_rdata = 32'h00000003;                 // Status Register: TX_READY & RX_VALID
         end
     end
@@ -62,17 +62,22 @@ module soc_top (
         if (!rst_n) begin
              motor_pwm <= 0;
              uart_mock_rx_buffer <= 0;
-        end else if (dcache_we) begin
-             if (dcache_addr == 32'h40000100) begin
-                 motor_pwm <= dcache_wdata[3:0]; 
-             end else if (dcache_addr == 32'h40000200) begin
-                 // Loopback: Save TX writes directly into the RX buffer
-                 uart_mock_rx_buffer <= dcache_wdata[7:0]; 
+        end else if (l1_mem_we && l1_mem_req) begin
+             if (l1_mem_addr == 32'h40000100) begin
+                 motor_pwm <= l1_mem_wdata[3:0]; 
+             end else if (l1_mem_addr == 32'h40000200) begin
+                 uart_mock_rx_buffer <= l1_mem_wdata[7:0]; 
              end
         end
     end
 
     // --- 3. RISC-V CORE ---
+    // L1-to-core signals renamed; L1-to-memory ("L2 side") signals added
+    logic [31:0] l1_mem_addr, l1_mem_wdata, l1_mem_rdata;
+    logic        l1_mem_req, l1_mem_we, l1_mem_valid;
+    logic [31:0] core_dcache_rdata;
+    logic        core_dcache_valid;
+
     riscv_core u_core (
         .clk(clk), 
         .rst_n(rst_n),
@@ -84,24 +89,41 @@ module soc_top (
         .dcache_wdata(dcache_wdata),
         .dcache_we(dcache_we),
         .dcache_req(dcache_req),
-        // If address bit 30 is high, route to IO mock, else route to RAM
-        .dcache_rdata(dcache_addr[30] ? io_rdata : dcache_ram_data), 
-        .dcache_valid(1'b1)
+        .dcache_rdata(core_dcache_rdata),
+        .dcache_valid(core_dcache_valid)
     );
+
+    l1_controller u_l1 (
+        .clk(clk),
+        .rst_n(rst_n),
+        .cpu_addr(dcache_addr),
+        .cpu_wdata(dcache_wdata),
+        .cpu_req(dcache_req),
+        .cpu_we(dcache_we),
+        .cpu_rdata(core_dcache_rdata),
+        .cpu_valid(core_dcache_valid),
+        .l2_addr(l1_mem_addr),
+        .l2_wdata(l1_mem_wdata),
+        .l2_req(l1_mem_req),
+        .l2_we(l1_mem_we),
+        .l2_rdata(l1_mem_rdata),
+        .l2_valid(l1_mem_valid)
+    );
+
+    // Memory/IO now serves the L1 controller instead of the core directly
+    assign l1_mem_rdata = l1_mem_addr[31:16] == 16'h4000 ? io_rdata : dcache_ram_data;
+    assign l1_mem_valid = 1'b1; // Combinational BRAM/IO always responds same-cycle
 
     // --- 4. VERIFICATION MONITOR ---
     always_ff @(posedge clk) begin
-        if (rst_n && dcache_we && dcache_addr == 32'h40000200) begin
-            // Print standard ASCII characters to terminal
-            if (dcache_wdata[7:0] >= 8'h20 && dcache_wdata[7:0] <= 8'h7E) begin
-                $write("%c", dcache_wdata[7:0]);
+        if (rst_n && l1_mem_we && l1_mem_req && l1_mem_addr == 32'h40000200) begin
+            if (l1_mem_wdata[7:0] >= 8'h20 && l1_mem_wdata[7:0] <= 8'h7E) begin
+                $write("%c", l1_mem_wdata[7:0]);
             end
-            
-            // Catch completion codes (Masked to 8 bits to prevent C sign-extension bugs)
-            if (dcache_wdata[7:0] == 8'hFF) begin
+            if (l1_mem_wdata[7:0] == 8'hFF) begin
                 $display("\n[VERIFICATION] RESULT: PASS (0xFF detected)");
                 $finish; 
-            end else if (dcache_wdata[7:0] == 8'hEE) begin
+            end else if (l1_mem_wdata[7:0] == 8'hEE) begin
                 $display("\n[VERIFICATION] RESULT: FAIL (0xEE detected)");
                 $fatal;  
             end

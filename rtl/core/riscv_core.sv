@@ -13,6 +13,7 @@ module riscv_core (
     output logic        dcache_req,
     input  logic [31:0] dcache_rdata,
     input  logic        dcache_valid
+    
 );
     import RISCV_PKG::*;
 
@@ -44,6 +45,12 @@ module riscv_core (
     logic branch_taken;
     logic core_pc_load;
     logic [31:0] core_pc_target;
+    
+    logic core_stall;
+    assign core_stall = dcache_req && !dcache_valid;
+
+    logic id_wb_en_gated;
+    assign id_wb_en_gated = id_wb_en && !core_stall;
 
     assign opcode = if_instr[6:0];
     assign funct3 = if_instr[14:12];
@@ -110,7 +117,7 @@ module riscv_core (
     fetch u_fetch (
         .clk(clk),
         .rst_n(rst_n),
-        .stall(!icache_valid),
+        .stall(!icache_valid || core_stall),
         .pc_load(core_pc_load),
         .pc_target(core_pc_target),
         .icache_addr(icache_addr),
@@ -127,7 +134,7 @@ module riscv_core (
         .rst_n(rst_n),
         .instr(if_instr),
         .pc(if_pc),
-        .wb_en(id_wb_en),
+        .wb_en(id_wb_en_gated),
         .wb_addr(id_rd),
         .wb_data(core_wb_data),
         .alu_op(id_alu_op),
@@ -170,7 +177,7 @@ module riscv_core (
 
     always_ff @(posedge clk) begin
         if (!rst_n) pid_integ <= 0;
-        else if (id_pid_en) pid_integ <= pid_integ_next;
+        else if (id_pid_en && !core_stall) pid_integ <= pid_integ_next;
     end
 
 endmodule
