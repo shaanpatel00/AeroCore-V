@@ -16,8 +16,9 @@ void main(void) {
     while (1) {
         pid_task();
         
-        if (tick_count % 100 == 0) {
+        if (tick_count >= 100) {
             telemetry_task();
+            tick_count = 0;
         }
         
         for (volatile int i = 0; i < 100; i++); // Simple busy wait
