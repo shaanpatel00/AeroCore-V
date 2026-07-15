@@ -93,30 +93,40 @@ module soc_top (
         .dcache_valid(core_dcache_valid)
     );
 
-    /*l1_controller u_l1 (
-        .clk(clk),
-        .rst_n(rst_n),
-        .cpu_addr(dcache_addr),
-        .cpu_wdata(dcache_wdata),
-        .cpu_req(dcache_req),
-        .cpu_we(dcache_we),
-        .cpu_rdata(core_dcache_rdata),
-        .cpu_valid(core_dcache_valid),
-        .l2_addr(l1_mem_addr),
-        .l2_wdata(l1_mem_wdata),
-        .l2_req(l1_mem_req),
-        .l2_we(l1_mem_we),
-        .l2_rdata(l1_mem_rdata),
-        .l2_valid(l1_mem_valid)
-    );
-    */
+    `ifdef BYPASS_L1
+        assign core_dcache_rdata = l1_mem_rdata;
+        assign core_dcache_valid = l1_mem_valid;
+        assign l1_mem_addr  = dcache_addr;
+        assign l1_mem_wdata = dcache_wdata;
+        assign l1_mem_req   = dcache_req;
+        assign l1_mem_we    = dcache_we;
+    `else
+        l1_controller u_l1 (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cpu_addr(dcache_addr),
+            .cpu_wdata(dcache_wdata),
+            .cpu_req(dcache_req),
+            .cpu_we(dcache_we),
+            .cpu_rdata(core_dcache_rdata),
+            .cpu_valid(core_dcache_valid),
+            .l2_addr(l1_mem_addr),
+            .l2_wdata(l1_mem_wdata),
+            .l2_req(l1_mem_req),
+            .l2_we(l1_mem_we),
+            .l2_rdata(l1_mem_rdata),
+            .l2_valid(l1_mem_valid)
+        );
+    `endif
 
+    /*
     assign core_dcache_rdata = l1_mem_rdata;
     assign core_dcache_valid = l1_mem_valid;
     assign l1_mem_addr  = dcache_addr;
     assign l1_mem_wdata = dcache_wdata;
     assign l1_mem_req   = dcache_req;
     assign l1_mem_we    = dcache_we;
+    */
 
     // Memory/IO now serves the L1 controller instead of the core directly
     // Simulate realistic DRAM-style backing memory latency (8 cycles per access)
