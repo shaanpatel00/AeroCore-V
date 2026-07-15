@@ -30,21 +30,30 @@ int main(int argc, char** argv) {
     int max_cycles = 200000;
     int cycle_count = 0;
     long stall_cycles = 0;
+    long total_requests = 0;
+    bool prev_req = false;
 
     while (!Verilated::gotFinish() && cycle_count < max_cycles) {
         top->clk = 1; top->eval();
         top->clk = 0; top->eval();
         cycle_count++;
-        #ifdef BASELINE_NO_STALL
-        // Baseline config ties dcache_valid=1'b1, so stalls are impossible by construction.
+        bool req_now = top->rootp->soc_top__DOT__dcache_req;
+        if (req_now && !prev_req) total_requests++;
+        prev_req = req_now;
+
+        #ifdef BYPASS_L1
+        if (req_now && !top->rootp->soc_top__DOT__l1_mem_valid) {
+            stall_cycles++;
+        }
         #else
-        if (top->rootp->soc_top__DOT__dcache_req && !top->rootp->soc_top__DOT__core_dcache_valid) {
+        if (req_now && !top->rootp->soc_top__DOT__core_dcache_valid) {
             stall_cycles++;
         }
         #endif
     }
 
     std::cout << "[BENCH] total_cycles=" << cycle_count
+               << " total_requests=" << total_requests
                << " stall_cycles=" << stall_cycles
                << " stall_pct=" << (100.0 * stall_cycles / cycle_count) << "%"
                << std::endl;
