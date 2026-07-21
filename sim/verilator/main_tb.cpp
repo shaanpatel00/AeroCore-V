@@ -41,6 +41,22 @@ int main(int argc, char** argv) {
         if (req_now && !prev_req) total_requests++;
         prev_req = req_now;
 
+        if (cycle_count % 5000 == 0) {
+            std::cout << "cyc=" << cycle_count
+                       << " pc=0x" << std::hex << top->rootp->soc_top__DOT__u_core__DOT__u_fetch__DOT__pc
+                       << std::dec
+                       << " dreq=" << req_now
+                       << " dwe=" << (int)top->rootp->soc_top__DOT__dcache_we
+                       << " mempending=" << (int)top->rootp->soc_top__DOT__mem_pending
+                       << " wben=" << (int)top->rootp->soc_top__DOT__u_core__DOT__id_wb_en
+#ifdef BYPASS_L1
+                       << " memvalid=" << (int)top->rootp->soc_top__DOT__l1_mem_valid
+#else
+                       << " memvalid=" << (int)top->rootp->soc_top__DOT__core_dcache_valid
+#endif
+                       << std::endl;
+        }
+
         #ifdef BYPASS_L1
         if (req_now && !top->rootp->soc_top__DOT__l1_mem_valid) {
             stall_cycles++;
