@@ -17,6 +17,7 @@ module riscv_core (
 );
     import RISCV_PKG::*;
 
+    logic [15:0] debug_cyc;
     logic [31:0] if_pc, if_instr;
     logic [31:0] if_pc_plus_4;
     
@@ -180,4 +181,13 @@ module riscv_core (
         else if (id_pid_en && !core_stall) pid_integ <= pid_integ_next;
     end
 
+    // --- DEBUG TRACE (temporary) ---
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) debug_cyc <= 0;
+        else if (debug_cyc < 150) begin
+            debug_cyc <= debug_cyc + 1;
+            $display("cyc=%0d pc=%h instr=%h dreq=%b dwe=%b dvalid=%b stall=%b",
+                      debug_cyc, if_pc, if_instr, dcache_req, dcache_we, dcache_valid, core_stall);
+        end
+    end
 endmodule
