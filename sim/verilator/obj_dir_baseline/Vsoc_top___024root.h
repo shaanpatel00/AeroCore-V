@@ -54,6 +54,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vsoc_top___024root final {
         CData/*0:0*/ __Vtrigprevexpr___TOP__rst_n__1;
         CData/*0:0*/ __VactPhaseResult;
         CData/*0:0*/ __VnbaPhaseResult;
+        SData/*15:0*/ soc_top__DOT__u_core__DOT__debug_cyc;
         VL_IN(ext_sensor_data,31,0);
         IData/*31:0*/ soc_top__DOT__io_rdata;
         IData/*31:0*/ soc_top__DOT__u_core__DOT__dcache_rdata;
@@ -79,9 +80,9 @@ class alignas(VL_CACHE_LINE_BYTES) Vsoc_top___024root final {
         QData/*63:0*/ soc_top__DOT__u_core__DOT__u_execute__DOT__u_pid_alu__DOT__integral_accum;
         VlUnpacked<IData/*31:0*/, 4096> soc_top__DOT__ram;
         VlUnpacked<IData/*31:0*/, 32> soc_top__DOT__u_core__DOT__u_decode__DOT__u_regfile__DOT__regs;
-        VlUnpacked<QData/*63:0*/, 1> __VstlTriggered;
     };
     struct {
+        VlUnpacked<QData/*63:0*/, 1> __VstlTriggered;
         VlUnpacked<QData/*63:0*/, 2> __VicoTriggered;
         VlUnpacked<QData/*63:0*/, 1> __VactTriggered;
         VlUnpacked<QData/*63:0*/, 1> __VnbaTriggered;

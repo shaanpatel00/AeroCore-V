@@ -8,7 +8,7 @@ kernel.elf: bootloader/start.S kernel/sched.c kernel/pid.c
 	$(CC) $(CFLAGS) -T bootloader/linker.ld $^ -o $@
 
 kernel.hex: kernel.elf
-	$(OBJCOPY) -O verilog $< $@
+	python3 tools/elf2hex.py $< $@
 
 clean:
 	rm -f *.elf *.hex

@@ -24,9 +24,9 @@ module l1_controller (
     // To match your "Lab 2" simplicity, we assume 1 word per line for easy logic,
     // but standard caches use wider lines. Sticking to 1-word lines (32-bit) for readability.
     
-    localparam SETS = 64;
-    localparam INDEX_BITS = 6;  // log2(64)
-    localparam TAG_BITS = 24;   // 32 - 6 - 2 (byte offset)
+    localparam SETS = 1024;
+    localparam INDEX_BITS = 10; // log2(1024) -> 4KB coverage (1024 words x 4B)
+    localparam TAG_BITS = 20;   // 32 - 10 - 2 (byte offset)
 
     // --- Signals ---
     logic [INDEX_BITS-1:0] index;
@@ -40,8 +40,8 @@ module l1_controller (
     logic [31:0] ram_wdata;
     logic [TAG_BITS:0] tag_wdata; // Tag + Valid Bit
 
-    assign index  = cpu_addr[7:2];
-    assign tag_in = cpu_addr[31:8];
+    assign index  = cpu_addr[11:2];
+    assign tag_in = cpu_addr[31:12];
 
     // IO Region Detection (Bypass Cache for 0x4000_XXXX)
     logic is_io;

@@ -201,6 +201,7 @@ VL_ATTR_COLD void Vsoc_top___024root___ctor_var_reset(Vsoc_top___024root* vlSelf
     vlSelf->soc_top__DOT__mem_delay_cnt = VL_SCOPED_RAND_RESET_I(4, __VscopeHash, 1930001486232317457ull);
     vlSelf->soc_top__DOT__mem_pending = VL_SCOPED_RAND_RESET_I(1, __VscopeHash, 18346072485235213503ull);
     vlSelf->soc_top__DOT__u_core__DOT__dcache_rdata = VL_SCOPED_RAND_RESET_I(32, __VscopeHash, 10715599094997775097ull);
+    vlSelf->soc_top__DOT__u_core__DOT__debug_cyc = VL_SCOPED_RAND_RESET_I(16, __VscopeHash, 4853192361027177214ull);
     vlSelf->soc_top__DOT__u_core__DOT__id_alu_op = VL_SCOPED_RAND_RESET_I(7, __VscopeHash, 7760352982591441134ull);
     vlSelf->soc_top__DOT__u_core__DOT__id_op_a_sel = VL_SCOPED_RAND_RESET_I(2, __VscopeHash, 14827806355841756009ull);
     vlSelf->soc_top__DOT__u_core__DOT__id_op_b_sel = VL_SCOPED_RAND_RESET_I(2, __VscopeHash, 17924182778416197314ull);
