@@ -39,18 +39,3 @@ void pid_task(void) {
 
     MOTOR_PWM_REG = pwm;
 }
-
-/**
- * @brief Telemetry Task (Lower Priority)
- * Sends debug info out via UART (Simulated)
- */
-void telemetry_task(void) {
-    // Determine status based on altitude
-    // This runs only when PID task yields or is waiting
-    if (current_alt < TO_FIXED(10.0)) {
-        // Status: Takeoff
-    } else if (current_alt > TO_FIXED(45.0)) {
-        // Status: Hovering
-    }
-    // (UART code omitted for brevity)
-}
