@@ -5,7 +5,7 @@ CFLAGS=-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib
 all: kernel.hex
 
 kernel.elf: bootloader/start.S kernel/sched.c kernel/pid.c user/telemetry_task.c
-	$(CC) $(CFLAGS) -T bootloader/linker.ld $^ -o $@
+	$(CC) $(CFLAGS) -T bootloader/linker.ld $^ -o $@ -lgcc
 
 kernel.hex: kernel.elf
 	python3 tools/elf2hex.py $< $@

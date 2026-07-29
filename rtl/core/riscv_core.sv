@@ -182,12 +182,13 @@ module riscv_core (
     end
 
     // --- DEBUG TRACE (temporary) ---
-    always_ff @(posedge clk or negedge rst_n) begin
+   always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) debug_cyc <= 0;
-        else if (debug_cyc < 150) begin
+        else if (debug_cyc < 3000) begin
             debug_cyc <= debug_cyc + 1;
-            $display("cyc=%0d pc=%h instr=%h dreq=%b dwe=%b dvalid=%b stall=%b",
-                      debug_cyc, if_pc, if_instr, dcache_req, dcache_we, dcache_valid, core_stall);
+            if (opcode == OPCODE_BRANCH)
+                $display("cyc=%0d pc=%h instr=%h rs1=%0d rs2=%0d taken=%b stall=%b",
+                          debug_cyc, if_pc, if_instr, $signed(id_rs1), $signed(id_rs2), branch_taken, core_stall);
         end
     end
 endmodule
