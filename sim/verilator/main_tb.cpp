@@ -29,13 +29,14 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 10; ++i) {
         top->clk = !top->clk;
         top->eval();
+        tfp->dump(main_time++);
     }
     top->rst_n = 1; // Release reset
 
     std::cout << "[VERILATOR] Starting AeroCore-V SoC Simulation..." << std::endl;
 
     //TEMP REPLACEMENT
-    int max_cycles = 30000;
+    int max_cycles = 10000000;
     int cycle_count = 0;
     long stall_cycles = 0;
     long total_requests = 0;

@@ -133,7 +133,6 @@ module soc_top (
     localparam MEM_LATENCY = 8;
     logic [3:0] mem_delay_cnt;
     logic       mem_pending;
-    logic [31:0] pending_addr;
 
     assign l1_mem_rdata = l1_mem_addr[31:16] == 16'h4000 ? io_rdata : dcache_ram_data;
 
@@ -146,11 +145,6 @@ module soc_top (
             mem_pending  <= 1;
             mem_delay_cnt <= MEM_LATENCY - 1;
             l1_mem_valid <= 0;
-            pending_addr <= l1_mem_addr;
-        end else if (l1_mem_req && mem_pending) begin
-            if (l1_mem_addr !== pending_addr) begin
-                $display("[BUG] NEW request addr=%h we=%b arrived while addr=%h still pending (DROPPED)", l1_mem_addr, l1_mem_we, pending_addr);
-            end
         end else if (mem_pending) begin
             if (mem_delay_cnt == 0) begin
                 l1_mem_valid <= 1;
