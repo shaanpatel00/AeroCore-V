@@ -184,11 +184,17 @@ module riscv_core (
     // --- DEBUG TRACE (temporary) ---
    always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) debug_cyc <= 0;
-        else if (debug_cyc < 3000) begin
+        else if (debug_cyc < 3500) begin
             debug_cyc <= debug_cyc + 1;
             if (opcode == OPCODE_BRANCH)
-                $display("cyc=%0d pc=%h instr=%h rs1=%0d rs2=%0d taken=%b stall=%b",
+                $display("cyc=%0d BR  pc=%h instr=%h rs1=%0d rs2=%0d taken=%b stall=%b",
                           debug_cyc, if_pc, if_instr, $signed(id_rs1), $signed(id_rs2), branch_taken, core_stall);
+            else if (opcode == OPCODE_JAL)
+                $display("cyc=%0d JAL pc=%h instr=%h ra_before=%h target=%h wb_en=%b stall=%b",
+                          debug_cyc, if_pc, if_instr, u_decode.u_regfile.regs[1], core_pc_target, id_wb_en_gated, core_stall);
+            else if (opcode == OPCODE_JALR)
+                $display("cyc=%0d JLR pc=%h instr=%h rs1(x%0d)=%h ra_before=%h target=%h wb_en=%b stall=%b",
+                          debug_cyc, if_pc, if_instr, if_instr[19:15], id_rs1, u_decode.u_regfile.regs[1], core_pc_target, id_wb_en_gated, core_stall);
         end
     end
 endmodule

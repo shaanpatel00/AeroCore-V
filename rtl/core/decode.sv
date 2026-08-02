@@ -109,9 +109,18 @@ module decode (
                 wb_mux    = WB_MEM;
             end
 
+            // KNOWN LIMITATION: SB/SH (sub-word stores) are not yet implemented.
+            // All stores currently behave as SW (full 32-bit word), since dcache_wdata
+            // is always the raw, unshifted rs2 value with no funct3-based byte/halfword
+            // masking. Byte-level C writes (e.g. UART character output) will corrupt
+            // neighboring bytes in the same word. Fix requires: (1) shifting the value
+            // into the correct byte lane based on addr[1:0] + funct3, (2) a proper
+            // read-modify-write merge with the existing word content.
+            
             OPCODE_STORE: begin
                 op_b_sel = OPB_IMM;
                 mem_we   = 1;
+                mem_re   = 1; // Stores must also assert the memory-request signal
             end
             
             OPCODE_LUI: begin
