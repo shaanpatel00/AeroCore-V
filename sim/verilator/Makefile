@@ -2,7 +2,7 @@
 MODULE := Vsoc_top
 RTL_DIR := ../../rtl
 TWIN_DIR := ../digital_twin
-VERILATOR_ROOT := /opt/homebrew/share/verilator
+VERILATOR_INCLUDE ?= /opt/homebrew/share/verilator/include
 
 # Source Files
 RTL_SRCS := $(RTL_DIR)/core/riscv_pkg.sv \
