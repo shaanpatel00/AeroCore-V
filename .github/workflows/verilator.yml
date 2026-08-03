@@ -24,11 +24,19 @@ jobs:
     - name: Compile Bare-Metal Verification Tests
       run: |
         cd sim/tests
-        make
+        make CC=riscv64-unknown-elf-gcc
 
-    - name: Run Verilator Testbench
+    - name: Stage a self-checking test as the boot image
+      run: |
+        cp sim/tests/uart_loopback_test.hex sw/kernel.hex
+
+    - name: Build and Run Verilator Testbench
       run: |
         cd sim/verilator
-        make
-        # Assuming your makefile runs the compiled executable. 
-        # If it just builds it, you would add: ./Vsoc_top (or whatever the executable is named)
+        make test VERILATOR_INCLUDE=/usr/share/verilator/include
+        ./run_test
+
+    - name: Build the real flight kernel
+      run: |
+        cd sw
+        make CC=riscv64-unknown-elf-gcc

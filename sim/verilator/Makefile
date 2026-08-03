@@ -38,7 +38,7 @@ all: test twin
 # 1. Headless Testbench (Compiles main_tb.cpp)
 test: obj_dir/$(MODULE)__ALL.a
 	@echo "--- Building Headless Sim ---"
-	$(CXX) $(CFLAGS) -Iobj_dir -I$(VERILATOR_ROOT)/include \
+	$(CXX) $(CFLAGS) -Iobj_dir -I$(VERILATOR_INCLUDE) \
 	main_tb.cpp obj_dir/*.o \
 	-o run_test
 	@echo "Build Complete: ./run_test"
@@ -46,7 +46,7 @@ test: obj_dir/$(MODULE)__ALL.a
 # 2. Digital Twin (Compiles bridge.cpp + physics + viz)
 twin: obj_dir/$(MODULE)__ALL.a
 	@echo "--- Building Digital Twin ---"
-	$(CXX) $(CFLAGS) -Iobj_dir -I$(VERILATOR_ROOT)/include \
+	$(CXX) $(CFLAGS) -Iobj_dir -I$(VERILATOR_INCLUDE) \
 	-I$(TWIN_DIR) \
 	$(TWIN_DIR)/physics_engine.cpp \
 	$(TWIN_DIR)/visualizer.cpp \
