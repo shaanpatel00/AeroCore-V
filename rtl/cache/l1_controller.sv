@@ -7,6 +7,7 @@ module l1_controller (
     input  logic [31:0] cpu_wdata,
     input  logic        cpu_req,    // Valid request
     input  logic        cpu_we,     // Write Enable
+    input  logic [2:0]  cpu_funct3, // 000=SB, 001=SH, 010=SW (also used for loads)
     output logic [31:0] cpu_rdata,
     output logic        cpu_valid,  // Data ready (Hit or Refill complete)
 
@@ -42,6 +43,35 @@ module l1_controller (
 
     assign index  = cpu_addr[11:2];
     assign tag_in = cpu_addr[31:12];
+
+    // --- Sub-word Store Support (SB/SH/SW) ---
+    // Shifts the store value into the correct byte lane and merges it with
+    // the currently-cached word, so a byte/halfword store doesn't clobber
+    // neighboring bytes that share the same 32-bit line.
+    logic [3:0]  wr_byte_mask;
+    logic [31:0] wr_data_shifted;
+    always_comb begin
+        case (cpu_funct3)
+            3'b000: begin // SB
+                wr_byte_mask    = 4'b0001 << cpu_addr[1:0];
+                wr_data_shifted = {24'b0, cpu_wdata[7:0]} << (cpu_addr[1:0] * 8);
+            end
+            3'b001: begin // SH
+                wr_byte_mask    = 4'b0011 << cpu_addr[1:0];
+                wr_data_shifted = {16'b0, cpu_wdata[15:0]} << (cpu_addr[1:0] * 8);
+            end
+            default: begin // SW
+                wr_byte_mask    = 4'b1111;
+                wr_data_shifted = cpu_wdata;
+            end
+        endcase
+    end
+
+    logic [31:0] merged_wdata;
+    assign merged_wdata[7:0]   = wr_byte_mask[0] ? wr_data_shifted[7:0]   : data_read[7:0];
+    assign merged_wdata[15:8]  = wr_byte_mask[1] ? wr_data_shifted[15:8]  : data_read[15:8];
+    assign merged_wdata[23:16] = wr_byte_mask[2] ? wr_data_shifted[23:16] : data_read[23:16];
+    assign merged_wdata[31:24] = wr_byte_mask[3] ? wr_data_shifted[31:24] : data_read[31:24];
 
     // IO Region Detection (Bypass Cache for 0x4000_XXXX)
     logic is_io;
@@ -115,12 +145,13 @@ module l1_controller (
                         // Write-Through to L2 (Simple policy)
                         // Also update L1
                         ram_we = 1;
-                        ram_wdata = cpu_wdata;
+                        ram_wdata = merged_wdata;
                         tag_wdata = {1'b1, tag_in};
                         
                         // Send to L2
                         l2_req = 1;
                         l2_we  = 1;
+                        l2_wdata = merged_wdata;
                     end
                     next_state = IDLE;
                 end else begin

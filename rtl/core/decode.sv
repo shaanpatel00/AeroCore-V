@@ -27,7 +27,8 @@ module decode (
     output logic [31:0] rs2_data,
     output logic [4:0]  rs1_addr,
     output logic [4:0]  rs2_addr,
-    output logic [4:0]  rd_addr
+    output logic [4:0]  rd_addr,
+    output logic [2:0]  mem_funct3
 );
     import RISCV_PKG::*;
 
@@ -41,6 +42,7 @@ module decode (
     assign rd_addr  = instr[11:7];
     assign rs1_addr = instr[19:15];
     assign rs2_addr = instr[24:20];
+    assign mem_funct3 = funct3;
 
     // Immediate Generation
     always_comb begin
@@ -116,7 +118,7 @@ module decode (
             // neighboring bytes in the same word. Fix requires: (1) shifting the value
             // into the correct byte lane based on addr[1:0] + funct3, (2) a proper
             // read-modify-write merge with the existing word content.
-            
+
             OPCODE_STORE: begin
                 op_b_sel = OPB_IMM;
                 mem_we   = 1;

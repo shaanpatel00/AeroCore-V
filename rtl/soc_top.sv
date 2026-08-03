@@ -21,6 +21,7 @@ module soc_top (
     logic [31:0] dcache_wdata;
     logic        dcache_we;
     logic        dcache_req;
+    logic [2:0]  dcache_funct3;
 
     // RAM and IO logic
     logic [31:0] ram [0:4095];
@@ -89,6 +90,7 @@ module soc_top (
         .dcache_wdata(dcache_wdata),
         .dcache_we(dcache_we),
         .dcache_req(dcache_req),
+        .dcache_funct3(dcache_funct3),
         .dcache_rdata(core_dcache_rdata),
         .dcache_valid(core_dcache_valid)
     );
@@ -108,6 +110,7 @@ module soc_top (
             .cpu_wdata(dcache_wdata),
             .cpu_req(dcache_req),
             .cpu_we(dcache_we),
+            .cpu_funct3(dcache_funct3),
             .cpu_rdata(core_dcache_rdata),
             .cpu_valid(core_dcache_valid),
             .l2_addr(l1_mem_addr),
@@ -160,7 +163,7 @@ module soc_top (
 
     // --- 4. VERIFICATION MONITOR ---
     always_ff @(posedge clk) begin
-        if (rst_n && l1_mem_we && l1_mem_req && l1_mem_addr == 32'h40000200) begin
+        if (rst_n && l1_mem_we && l1_mem_req && l1_mem_valid && l1_mem_addr == 32'h40000200) begin
             if (l1_mem_wdata[7:0] >= 8'h20 && l1_mem_wdata[7:0] <= 8'h7E) begin
                 $write("%c", l1_mem_wdata[7:0]);
             end

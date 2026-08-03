@@ -11,6 +11,7 @@ module riscv_core (
     output logic [31:0] dcache_wdata,
     output logic        dcache_we,
     output logic        dcache_req,
+    output logic [2:0]  dcache_funct3,
     input  logic [31:0] dcache_rdata,
     input  logic        dcache_valid
     
@@ -151,7 +152,8 @@ module riscv_core (
         .rs2_data(id_rs2),
         .rs1_addr(),
         .rs2_addr(),
-        .rd_addr(id_rd)
+        .rd_addr(id_rd),
+        .mem_funct3(dcache_funct3)
     );
 
     assign id_op_a = (id_op_a_sel == OPA_REG) ? id_rs1 :
