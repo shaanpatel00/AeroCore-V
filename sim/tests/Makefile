@@ -1,5 +1,5 @@
 # sim/tests/Makefile
-CC = riscv64-elf-gcc
+CC ?= riscv64-elf-gcc
 OBJCOPY = riscv64-elf-objcopy
 PYTHON = python3
 

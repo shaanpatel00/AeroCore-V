@@ -1,4 +1,4 @@
-CC = riscv64-elf-gcc
+CC ?= riscv64-elf-gcc
 OBJCOPY = riscv64-elf-objcopy
 CFLAGS=-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib
 
