@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     std::cout << "[VERILATOR] Starting AeroCore-V SoC Simulation..." << std::endl;
 
     //TEMP REPLACEMENT
-    int max_cycles = 10000000;
+    int max_cycles = 100000000;
     int cycle_count = 0;
     long stall_cycles = 0;
     long total_requests = 0;
