@@ -102,30 +102,47 @@ module l2_controller (
     typedef enum logic [1:0] { IDLE, CHECK, REFILL, IO_BYPASS } l2_state_t;
     l2_state_t state, next_state;
 
+    // cache_mem's read output lags its write by one cycle (no forwarding).
+    // valid_array must lag the SAME way, or CHECK can see a "valid" way whose
+    // tag_out/data_out haven't actually updated yet (false hit on stale/zero data).
+    // victim_way/index must also be LATCHED at the moment of the write, since
+    // they're combinational and the LRU matrix update (same trigger) can shift
+    // victim_way before the delayed valid-bit update fires.
+    logic                    refill_committed_d1;
+    logic [INDEX_BITS-1:0]   refill_index_d1;
+    logic [1:0]              refill_way_d1;
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= IDLE;
             valid_array <= '0;
             lru_matrix <= '0;
+            refill_committed_d1 <= 0;
+            refill_index_d1 <= '0;
+            refill_way_d1 <= '0;
         end else begin
             state <= next_state;
+            refill_committed_d1 <= (state == REFILL && mem_gnt);
+            if (state == REFILL && mem_gnt) begin
+                refill_index_d1 <= index;
+                refill_way_d1   <= victim_way;
+            end
             
             // Update LRU on Hit or Refill
             if ((state == CHECK && hit) || (state == REFILL && mem_gnt)) begin
                 logic [1:0] acc_way;
                 acc_way = (state == CHECK) ? hit_way : victim_way;
                 
-                // Update Matrix: Set row 'acc_way' to 1 (newer), Col 'acc_way' to 0
-                // (Implementation specific simplified updates)
                 if (acc_way == 0) begin lru_matrix[index][0]<=1; lru_matrix[index][1]<=1; lru_matrix[index][2]<=1; end
                 if (acc_way == 1) begin lru_matrix[index][0]<=0; lru_matrix[index][3]<=1; lru_matrix[index][4]<=1; end
                 if (acc_way == 2) begin lru_matrix[index][1]<=0; lru_matrix[index][3]<=0; lru_matrix[index][5]<=1; end
                 if (acc_way == 3) begin lru_matrix[index][2]<=0; lru_matrix[index][4]<=0; lru_matrix[index][5]<=0; end
             end
 
-            // Update Valid Bits on Refill
-            if (state == REFILL && mem_gnt) begin
-                valid_array[index][victim_way] <= 1;
+            // Update Valid Bits one cycle after Refill, matching cache_mem's read latency.
+            // Use the LATCHED index/way, not the live (possibly already-shifted) values.
+            if (refill_committed_d1) begin
+                valid_array[refill_index_d1][refill_way_d1] <= 1;
             end
         end
     end

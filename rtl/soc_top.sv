@@ -37,11 +37,11 @@ module soc_top (
     // --- 1. TRUE DUAL-PORT COMBINATIONAL RAM ---
     // Instruction Cache gets Port A, Data Cache gets Port B
     assign icache_ram_data = ram[icache_addr[13:2]];
-    assign dcache_ram_data = ram[l1_mem_addr[13:2]];
+    assign dcache_ram_data = ram[l2_mem_addr[13:2]];
 
     always_ff @(posedge clk) begin
-        if (l1_mem_we && l1_mem_req && !l1_mem_addr[30]) begin
-            ram[l1_mem_addr[13:2]] <= l1_mem_wdata;
+        if (l2_mem_we && l2_mem_req && !l2_mem_addr[30]) begin
+            ram[l2_mem_addr[13:2]] <= l2_mem_wdata;
         end
     end
 
@@ -50,11 +50,11 @@ module soc_top (
     
     always_comb begin
         io_rdata = 32'b0;
-        if (l1_mem_addr == 32'h40000000) begin
+        if (l2_mem_addr == 32'h40000000) begin
             io_rdata = ext_sensor_data;              // Read altitude from C++ Physics Engine
-        end else if (l1_mem_addr == 32'h40000204) begin
+        end else if (l2_mem_addr == 32'h40000204) begin
             io_rdata = {24'b0, uart_mock_rx_buffer}; // Read RX Register
-        end else if (l1_mem_addr == 32'h40000208) begin
+        end else if (l2_mem_addr == 32'h40000208) begin
             io_rdata = 32'h00000003;                 // Status Register: TX_READY & RX_VALID
         end
     end
@@ -63,11 +63,11 @@ module soc_top (
         if (!rst_n) begin
              motor_pwm <= 0;
              uart_mock_rx_buffer <= 0;
-        end else if (l1_mem_we && l1_mem_req) begin
-             if (l1_mem_addr == 32'h40000100) begin
-                 motor_pwm <= l1_mem_wdata[3:0]; 
-             end else if (l1_mem_addr == 32'h40000200) begin
-                 uart_mock_rx_buffer <= l1_mem_wdata[7:0]; 
+        end else if (l2_mem_we && l2_mem_req) begin
+             if (l2_mem_addr == 32'h40000100) begin
+                 motor_pwm <= l2_mem_wdata[3:0]; 
+             end else if (l2_mem_addr == 32'h40000200) begin
+                 uart_mock_rx_buffer <= l2_mem_wdata[7:0]; 
              end
         end
     end
@@ -76,6 +76,8 @@ module soc_top (
     // L1-to-core signals renamed; L1-to-memory ("L2 side") signals added
     logic [31:0] l1_mem_addr, l1_mem_wdata, l1_mem_rdata;
     logic        l1_mem_req, l1_mem_we, l1_mem_valid;
+    logic [31:0] l2_mem_addr, l2_mem_wdata, l2_mem_rdata;
+    logic        l2_mem_req, l2_mem_we, l2_mem_valid;
     logic [31:0] core_dcache_rdata;
     logic        core_dcache_valid;
 
@@ -96,12 +98,12 @@ module soc_top (
     );
 
     `ifdef BYPASS_L1
-        assign core_dcache_rdata = l1_mem_rdata;
-        assign core_dcache_valid = l1_mem_valid;
-        assign l1_mem_addr  = dcache_addr;
-        assign l1_mem_wdata = dcache_wdata;
-        assign l1_mem_req   = dcache_req;
-        assign l1_mem_we    = dcache_we;
+        assign core_dcache_rdata = l2_mem_rdata;
+        assign core_dcache_valid = l2_mem_valid;
+        assign l2_mem_addr  = dcache_addr;
+        assign l2_mem_wdata = dcache_wdata;
+        assign l2_mem_req   = dcache_req;
+        assign l2_mem_we    = dcache_we;
     `else
         l1_controller u_l1 (
             .clk(clk),
@@ -120,6 +122,23 @@ module soc_top (
             .l2_rdata(l1_mem_rdata),
             .l2_valid(l1_mem_valid)
         );
+
+        l2_controller u_l2 (
+            .clk(clk),
+            .rst_n(rst_n),
+            .l1_addr(l1_mem_addr),
+            .l1_wdata(l1_mem_wdata),
+            .l1_req(l1_mem_req),
+            .l1_we(l1_mem_we),
+            .l1_rdata(l1_mem_rdata),
+            .l1_valid(l1_mem_valid),
+            .mem_addr(l2_mem_addr),
+            .mem_wdata(l2_mem_wdata),
+            .mem_req(l2_mem_req),
+            .mem_we(l2_mem_we),
+            .mem_rdata(l2_mem_rdata),
+            .mem_gnt(l2_mem_valid)
+        );
     `endif
 
     /*
@@ -131,46 +150,46 @@ module soc_top (
     assign l1_mem_we    = dcache_we;
     */
 
-    // Memory/IO now serves the L1 controller instead of the core directly
+    // Memory/IO now serves the L2 controller instead of L1 directly
     // Simulate realistic DRAM-style backing memory latency (8 cycles per access)
     localparam MEM_LATENCY = 8;
     logic [3:0] mem_delay_cnt;
     logic       mem_pending;
 
-    assign l1_mem_rdata = l1_mem_addr[31:16] == 16'h4000 ? io_rdata : dcache_ram_data;
+    assign l2_mem_rdata = l2_mem_addr[31:16] == 16'h4000 ? io_rdata : dcache_ram_data;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             mem_delay_cnt <= 0;
             mem_pending   <= 0;
-            l1_mem_valid  <= 0;
-        end else if (l1_mem_req && !mem_pending) begin
+            l2_mem_valid  <= 0;
+        end else if (l2_mem_req && !mem_pending) begin
             mem_pending  <= 1;
             mem_delay_cnt <= MEM_LATENCY - 1;
-            l1_mem_valid <= 0;
+            l2_mem_valid <= 0;
         end else if (mem_pending) begin
             if (mem_delay_cnt == 0) begin
-                l1_mem_valid <= 1;
+                l2_mem_valid <= 1;
                 mem_pending  <= 0;
             end else begin
                 mem_delay_cnt <= mem_delay_cnt - 1;
-                l1_mem_valid <= 0;
+                l2_mem_valid <= 0;
             end
         end else begin
-            l1_mem_valid <= 0;
+            l2_mem_valid <= 0;
         end
     end
 
     // --- 4. VERIFICATION MONITOR ---
     always_ff @(posedge clk) begin
-        if (rst_n && l1_mem_we && l1_mem_req && l1_mem_valid && l1_mem_addr == 32'h40000200) begin
-            if (l1_mem_wdata[7:0] >= 8'h20 && l1_mem_wdata[7:0] <= 8'h7E) begin
-                $write("%c", l1_mem_wdata[7:0]);
+        if (rst_n && l2_mem_we && l2_mem_req && l2_mem_valid && l2_mem_addr == 32'h40000200) begin
+            if (l2_mem_wdata[7:0] >= 8'h20 && l2_mem_wdata[7:0] <= 8'h7E) begin
+                $write("%c", l2_mem_wdata[7:0]);
             end
-            if (l1_mem_wdata[7:0] == 8'hFF) begin
+            if (l2_mem_wdata[7:0] == 8'hFF) begin
                 $display("\n[VERIFICATION] RESULT: PASS (0xFF detected)");
                 $finish; 
-            end else if (l1_mem_wdata[7:0] == 8'hEE) begin
+            end else if (l2_mem_wdata[7:0] == 8'hEE) begin
                 $display("\n[VERIFICATION] RESULT: FAIL (0xEE detected)");
                 $fatal;  
             end
