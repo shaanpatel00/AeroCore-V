@@ -21,6 +21,7 @@ module decode (
     output logic        wb_en_out,
     output RISCV_PKG::wb_mux_sel_e wb_mux,
     output logic        pid_en,
+    output logic        csr_we,
     
     // Register File Outputs
     output logic [31:0] rs1_data,
@@ -73,6 +74,7 @@ module decode (
         mem_re   = 0;
         wb_mux   = WB_ALU;
         pid_en   = 0;
+        csr_we   = 0;
 
         case (opcode)
             OPCODE_OP: begin
@@ -157,6 +159,12 @@ module decode (
                 wb_en_out = 1;
                 pid_en    = 1;
                 alu_op    = ALU_PID;
+            end
+
+            OPCODE_SYSTEM: begin
+                if (funct3 == 3'b001) begin // CSRRW
+                    csr_we = 1;
+                end
             end
             
             default: begin

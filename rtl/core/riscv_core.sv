@@ -36,6 +36,20 @@ module riscv_core (
     logic [31:0] csr_kd = 32'h00028000;
     logic [31:0] pid_integ;
 
+    // --- Minimal CSR file: satp only (CSR addr 12'h180) ---
+    logic        id_csr_we;
+    logic [11:0] csr_addr;
+    logic [31:0] csr_satp;
+    assign csr_addr = if_instr[31:20];
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            csr_satp <= 32'b0;
+        end else if (id_csr_we && !core_stall && (csr_addr == 12'h180)) begin
+            csr_satp <= id_rs1;
+        end
+    end
+
     logic [31:0] ex_result;
     logic [31:0] pid_integ_next;
     
@@ -147,6 +161,7 @@ module riscv_core (
         .wb_en_out(id_wb_en),
         .wb_mux(id_wb_mux),
         .pid_en(id_pid_en),
+        .csr_we(id_csr_we),
         .rs1_data(id_rs1),
         .rs2_data(id_rs2),
         .rs1_addr(),

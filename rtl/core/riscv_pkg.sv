@@ -9,6 +9,7 @@ package RISCV_PKG;
     parameter OPCODE_JALR   = 7'h67;
     parameter OPCODE_LUI    = 7'h37;
     parameter OPCODE_AUIPC  = 7'h17;
+    parameter OPCODE_SYSTEM = 7'h73;
     
     // --- CUSTOM EXTENSION ---
     // PID Accelerator Opcode (Custom-0)
