@@ -112,6 +112,19 @@ module l2_controller (
     logic [INDEX_BITS-1:0]   refill_index_d1;
     logic [1:0]              refill_way_d1;
 
+    // l1_req is a one-cycle pulse from L1 (it moves on to its own WRITE_WAIT
+    // state the very next cycle, dropping l2_we back to 0). By the time CHECK
+    // actually evaluates the request one cycle later, the live l1_we wire has
+    // already gone stale - latch it at the moment the request is captured
+    // instead of re-reading it live in CHECK. (l1_addr/l1_wdata don't need
+    // this: L1 drives those from unconditional defaults tied to cpu_addr/
+    // cpu_wdata, which stay stable for the whole stalled transaction.)
+    logic l1_we_latched;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) l1_we_latched <= 0;
+        else if (state == IDLE && l1_req) l1_we_latched <= l1_we;
+    end
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= IDLE;
@@ -173,7 +186,7 @@ module l2_controller (
 
             CHECK: begin
                 if (hit) begin
-                    if (l1_we) begin
+                    if (l1_we_latched) begin
                         // Write Hit: update our own cache copy now, but don't
                         // ack L1 yet - wait for backing memory to actually
                         // confirm the write-through (see WRITE_WAIT), instead
