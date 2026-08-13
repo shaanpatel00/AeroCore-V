@@ -78,11 +78,12 @@ module l1_controller (
     assign is_io = (cpu_addr[31:16] == 16'h4000);
 
     // --- State Machine ---
-    typedef enum logic [1:0] {
+    typedef enum logic [2:0] {
         IDLE,
         COMPARE,
         ALLOCATE,
-        IO_ACCESS
+        IO_ACCESS,
+        WRITE_WAIT
     } state_t;
     state_t state, next_state;
 
@@ -128,6 +129,7 @@ module l1_controller (
         l2_wdata = cpu_wdata;
 
         case (state)
+            default: ; // unused encodings of the 3-bit enum
             IDLE: begin
                 if (cpu_req) begin
                     if (is_io) next_state = IO_ACCESS;
@@ -139,11 +141,13 @@ module l1_controller (
                 // Check Hit
                 if (valid_bit_read && (tag_read == tag_in)) begin
                     // HIT
-                    cpu_valid = 1;
-                    
                     if (cpu_we) begin
                         // Write-Through to L2 (Simple policy)
-                        // Also update L1
+                        // Also update L1 now, but don't report cpu_valid yet -
+                        // wait for L2 to actually ack the write-through
+                        // (see WRITE_WAIT) instead of assuming same-cycle
+                        // completion, which let stale reads race ahead of
+                        // in-flight writes (e.g. the PTW's backdoor memory port).
                         ram_we = 1;
                         ram_wdata = merged_wdata;
                         tag_wdata = {1'b1, tag_in};
@@ -152,11 +156,21 @@ module l1_controller (
                         l2_req = 1;
                         l2_we  = 1;
                         l2_wdata = merged_wdata;
+                        next_state = WRITE_WAIT;
+                    end else begin
+                        cpu_valid = 1;
+                        next_state = IDLE;
                     end
-                    next_state = IDLE;
                 end else begin
                     // MISS
                     next_state = ALLOCATE;
+                end
+            end
+
+            WRITE_WAIT: begin
+                if (l2_valid) begin
+                    cpu_valid = 1;
+                    next_state = IDLE;
                 end
             end
 

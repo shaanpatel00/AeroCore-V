@@ -99,7 +99,7 @@ module l2_controller (
     end
 
     // --- State Machine ---
-    typedef enum logic [1:0] { IDLE, CHECK, REFILL, IO_BYPASS } l2_state_t;
+    typedef enum logic [2:0] { IDLE, CHECK, REFILL, IO_BYPASS, WRITE_WAIT } l2_state_t;
     l2_state_t state, next_state;
 
     // cache_mem's read output lags its write by one cycle (no forwarding).
@@ -111,6 +111,19 @@ module l2_controller (
     logic                    refill_committed_d1;
     logic [INDEX_BITS-1:0]   refill_index_d1;
     logic [1:0]              refill_way_d1;
+
+    // l1_req is a one-cycle pulse from L1 (it moves on to its own WRITE_WAIT
+    // state the very next cycle, dropping l2_we back to 0). By the time CHECK
+    // actually evaluates the request one cycle later, the live l1_we wire has
+    // already gone stale - latch it at the moment the request is captured
+    // instead of re-reading it live in CHECK. (l1_addr/l1_wdata don't need
+    // this: L1 drives those from unconditional defaults tied to cpu_addr/
+    // cpu_wdata, which stay stable for the whole stalled transaction.)
+    logic l1_we_latched;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) l1_we_latched <= 0;
+        else if (state == IDLE && l1_req) l1_we_latched <= l1_we;
+    end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -162,6 +175,7 @@ module l2_controller (
         mem_wdata = l1_wdata;
 
         case (state)
+            default: ; // unused encodings of the 3-bit enum
             IDLE: begin
                 if (l1_req) begin
                     // IO bypass check (e.g. 0x4000...)
@@ -172,9 +186,11 @@ module l2_controller (
 
             CHECK: begin
                 if (hit) begin
-                    l1_valid = 1;
-                    if (l1_we) begin
-                        // Write Hit
+                    if (l1_we_latched) begin
+                        // Write Hit: update our own cache copy now, but don't
+                        // ack L1 yet - wait for backing memory to actually
+                        // confirm the write-through (see WRITE_WAIT), instead
+                        // of assuming same-cycle completion.
                         way_we[hit_way] = 1;
                         way_wdata = l1_wdata;
                         way_tag_wdata = tag_in;
@@ -182,11 +198,21 @@ module l2_controller (
                         // Using Write-Through for simple Flight Controller reliability
                         mem_req = 1; 
                         mem_we = 1;
+                        next_state = WRITE_WAIT;
+                    end else begin
+                        l1_valid = 1;
+                        next_state = IDLE;
                     end
-                    next_state = IDLE;
                 end else begin
                     // MISS
                     next_state = REFILL;
+                end
+            end
+
+            WRITE_WAIT: begin
+                if (mem_gnt) begin
+                    l1_valid = 1;
+                    next_state = IDLE;
                 end
             end
 
