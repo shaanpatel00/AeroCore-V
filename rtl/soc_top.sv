@@ -45,6 +45,27 @@ module soc_top (
         end
     end
 
+    // --- 1b. PTW Backdoor Read Port ---
+    // The page table walker needs its own read path into main memory,
+    // independent of the CPU's I/D cache traffic. This is a simple
+    // request/latch/respond wrapper giving 1-cycle read latency, matching
+    // the req/valid protocol ptw.sv expects from its memory interface.
+    logic [31:0] ptw_mem_addr;
+    logic        ptw_mem_req;
+    logic [31:0] ptw_mem_rdata;
+    logic        ptw_mem_valid;
+    logic [31:0] ptw_addr_latched;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            ptw_mem_valid <= 0;
+        end else begin
+            ptw_mem_valid <= ptw_mem_req;
+            if (ptw_mem_req) ptw_addr_latched <= ptw_mem_addr;
+        end
+    end
+    assign ptw_mem_rdata = ram[ptw_addr_latched[13:2]];
+
     // --- 2. IO MOCKING ---
     logic [7:0] uart_mock_rx_buffer;
     
@@ -94,7 +115,11 @@ module soc_top (
         .dcache_req(dcache_req),
         .dcache_funct3(dcache_funct3),
         .dcache_rdata(core_dcache_rdata),
-        .dcache_valid(core_dcache_valid)
+        .dcache_valid(core_dcache_valid),
+        .ptw_mem_addr(ptw_mem_addr),
+        .ptw_mem_req(ptw_mem_req),
+        .ptw_mem_rdata(ptw_mem_rdata),
+        .ptw_mem_valid(ptw_mem_valid)
     );
 
     `ifdef BYPASS_L1
