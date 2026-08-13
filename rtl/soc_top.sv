@@ -11,7 +11,14 @@ module soc_top (
     output logic        spi_sclk,
     
     // Motor PWM Outputs
-    output logic [3:0]  motor_pwm
+    output logic [3:0]  motor_pwm,
+
+    // Debug/benchmark output - NOT part of the real hardware interface.
+    // Exists so the testbench can observe dcache_req via a stable top-level
+    // port instead of a hardcoded internal hierarchical path, which breaks
+    // across Verilator versions/optimization settings whenever riscv_core's
+    // internals change shape (see git history for the CI failure this fixed).
+    output logic         dbg_dcache_req
 );
 
     // Core Cache Interface Signals
@@ -101,6 +108,8 @@ module soc_top (
     logic        l2_mem_req, l2_mem_we, l2_mem_valid;
     logic [31:0] core_dcache_rdata;
     logic        core_dcache_valid;
+
+    assign dbg_dcache_req = dcache_req;
 
     riscv_core u_core (
         .clk(clk), 

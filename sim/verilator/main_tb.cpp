@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
         top->clk = 1; top->eval(); tfp->dump(main_time++);
         top->clk = 0; top->eval(); tfp->dump(main_time++);
         cycle_count++;
-        bool req_now = top->rootp->soc_top__DOT__u_core__DOT__dcache_req;
+        bool req_now = top->dbg_dcache_req;
         if (req_now && !prev_req) total_requests++;
         prev_req = req_now;
 
