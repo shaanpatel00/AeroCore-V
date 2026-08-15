@@ -2,6 +2,7 @@
 
 extern void pid_task(void);
 extern void telemetry_task(void);
+extern void mmu_init(void);
 
 #define NUM_TASKS  2
 #define PRIO_HIGH  0
@@ -36,6 +37,7 @@ void scheduler_run(void) {
 }
 
 void main(void) {
+    mmu_init();      // Enable Sv32 paging before anything else runs
     MOTOR_PWM_REG = 0; // Motors off
 
     while (1) {

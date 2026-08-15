@@ -56,11 +56,12 @@ SECTIONS
   } > RAM
 
   /* 5. Stack Setup */
-  /* Place stack at the very end of RAM */
+  /* Place stack below the reserved MMU page-table region (see
+   * sw/kernel/mmu_init.c) so it can never grow into it. */
   .stack (NOLOAD) :
   {
     . = ALIGN(16);
-    . = ORIGIN(RAM) + LENGTH(RAM);
+    . = ORIGIN(RAM) + LENGTH(RAM) - 0x2000; /* reserve top 8KB (2 pages) for page tables */
     PROVIDE( _stack_top = . );
   } > RAM
 }
